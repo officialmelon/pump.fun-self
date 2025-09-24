@@ -12,12 +12,6 @@ A discord.py-self-like library for creating selfbots on pump.fun. Build custom b
 - Full async/await support
 - Structured data models for messages, users, and rooms
 
-## Installation
-
-```bash
-pip install pump.fun-self
-```
-
 ## Quick Start
 
 ```python
