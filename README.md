@@ -1,12 +1,12 @@
-# Pump-Self
-
-A discord.py-self-like library for creating selfbots on pump.fun. Build custom bots with an intuitive event-driven architecture.
+# Usage
 
 ## Features
 
 - Event-driven architecture with familiar decorator syntax
 - Automatic username detection from auth tokens
 - Message and reply handling with content moderation warnings
+- **Built-in user banning functionality with messageId tracking**
+- **Automatic moderator permission detection**
 - Built-in reconnection logic and error handling
 - Lightweight with minimal logging
 - Full async/await support
@@ -144,6 +144,112 @@ Represents a chat room:
 room.id             # Room identifier
 ```
 
+## Banning and Moderation
+
+### Enabling Banning
+
+```python
+@client.event
+async def on_ready():
+    # Enable banning functionality
+    client.enable_banning()
+    
+    # Check if you have mod permissions
+    has_perms = await client.check_mod_permissions()
+    if has_perms:
+        print("Moderator permissions confirmed - banning active")
+    else:
+        print("No moderator permissions - banning disabled")
+```
+
+### Banning Users by Message ID
+
+Track and ban users based on their message IDs:
+
+```python
+@client.event
+async def on_message(message):
+    # Check for inappropriate content
+    if "spam" in message.content.lower():
+        # Ban the user who sent this specific message
+        success = await client.ban_user_by_message_id(
+            message.id, 
+            "Spam detected"
+        )
+        
+        if success:
+            print(f"Banned {message.author.username}")
+        else:
+            print(f"Failed to ban {message.author.username}")
+```
+
+### Banning Users by Address
+
+Directly ban users if you know their address:
+
+```python
+# Ban a user by their wallet address
+success = await client.ban_user_by_address(
+    "user_wallet_address_here",
+    "Inappropriate behavior"
+)
+```
+
+### Unbanning Users
+
+```python
+# Unban a user by their wallet address  
+success = await client.unban_user("user_wallet_address_here")
+```
+
+### Ban Statistics
+
+```python
+# Get banning statistics
+stats = client.get_ban_stats()
+print(f"Banned users: {stats['banned_users_count']}")
+print(f"Has mod permissions: {stats['has_mod_permissions']}")
+```
+
+### Automatic Moderation Example
+
+```python
+import asyncio
+from pump_self_melon import Client
+
+# Phrases that trigger automatic banning
+BAN_TRIGGERS = ["spam", "scam", "inappropriate content"]
+
+client = Client(token="your_token")
+
+@client.event
+async def on_ready():
+    client.enable_banning()
+    print("Auto-moderation bot ready!")
+
+@client.event  
+async def on_message(message):
+    message_lower = message.content.lower()
+    
+    for trigger in BAN_TRIGGERS:
+        if trigger in message_lower:
+            success = await client.ban_user_by_message_id(
+                message.id,
+                f"Auto-ban: {trigger}"
+            )
+            
+            if success:
+                print(f"Auto-banned {message.author.username}")
+            break
+
+await client.start("room_id", "username")
+```
+
+**Requirements for Banning:**
+- You must have moderator permissions in the room
+- Banning functionality must be enabled with `client.enable_banning()`
+- The library will automatically check and warn about missing permissions
+
 ## Advanced Usage
 
 ### Multiple Event Handlers
@@ -203,9 +309,7 @@ WARNING: Content moderation issue detected - message may have been filtered
 
 1. **Use send_message over send_reply** - Regular messages are less likely to be flagged
 2. **Handle errors gracefully** - Always implement error handlers
-3. **Respect rate limits** - Don't spam messages
-4. **Monitor content warnings** - Watch for moderation issues
-5. **Keep tokens secure** - Never commit tokens to version control
+3. **Monitor content warnings** - Watch for moderation issues
 
 ## Examples
 

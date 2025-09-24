@@ -9,6 +9,7 @@ from datetime import datetime
 
 from .models import Message, User, Room
 from .utils import get_user_info
+from .ban_manager import BanManager
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.ERROR)
@@ -21,6 +22,7 @@ class Client:
         self.is_authenticated = False
         self.current_room = None
         self.current_username = None
+        self.ban_manager = None
         
         self._event_handlers = {
             'message': [],
@@ -82,8 +84,22 @@ class Client:
         self.current_room = Room(room_id)
         self.current_username = username
         
+        # Initialize ban manager for this room
+        if self.ban_manager is None:
+            self.ban_manager = BanManager(self.token, room_id, enabled=False)
+        
         join_message = f'420["joinRoom",{{"roomId":"{room_id}","username":"{username}"}}]'
         await self.websocket.send(join_message)
+        
+        # Check mod permissions if banning is enabled
+        if self.ban_manager and self.ban_manager.enabled:
+            print("🔍 Checking moderator permissions...")
+            await self.ban_manager.check_mod_permissions()
+            if not self.ban_manager.has_mod_permissions:
+                print("⚠️  WARNING: Banning is enabled but you don't have moderator permissions!")
+                print("   You will need moderator permissions to ban users effectively.")
+            else:
+                print("✅ Moderator permissions confirmed - banning functionality active")
         
         await self._dispatch('join', self.current_room, User(username))
     
@@ -196,6 +212,10 @@ class Client:
         
         message = self._parse_message(raw_message)
         if message:
+            # Track message for potential banning
+            if self.ban_manager:
+                self.ban_manager.track_message(message)
+            
             await self._dispatch('message', message)
     
     async def _listen(self):
@@ -278,7 +298,85 @@ class Client:
         self.is_authenticated = False
     
     async def close(self):
+        if self.ban_manager:
+            await self.ban_manager.close()
         await self.disconnect()
+    
+    def enable_banning(self):
+        """Enable automatic user banning functionality"""
+        if self.ban_manager:
+            self.ban_manager.enable_banning()
+        else:
+            print("⚠️  Cannot enable banning: not connected to a room yet")
+    
+    def disable_banning(self):
+        """Disable automatic user banning functionality"""
+        if self.ban_manager:
+            self.ban_manager.disable_banning()
+    
+    async def ban_user_by_message_id(self, message_id: str, reason: str = "Inappropriate content") -> bool:
+        """
+        Ban a user based on their message ID
+        
+        Args:
+            message_id: The ID of the message from the user to ban
+            reason: Reason for the ban
+            
+        Returns:
+            True if ban was successful, False otherwise
+        """
+        if not self.ban_manager:
+            print("⚠️  Banning not available: not connected to a room")
+            return False
+        
+        return await self.ban_manager.ban_by_message_id(message_id, reason)
+    
+    async def ban_user_by_address(self, user_address: str, reason: str = "Inappropriate content") -> bool:
+        """
+        Ban a user by their address
+        
+        Args:
+            user_address: The address of the user to ban
+            reason: Reason for the ban
+            
+        Returns:
+            True if ban was successful, False otherwise
+        """
+        if not self.ban_manager:
+            print("⚠️  Banning not available: not connected to a room")
+            return False
+        
+        return await self.ban_manager.ban_user(user_address, reason)
+    
+    async def unban_user(self, user_address: str) -> bool:
+        """
+        Unban a user by their address
+        
+        Args:
+            user_address: The address of the user to unban
+            
+        Returns:
+            True if unban was successful, False otherwise
+        """
+        if not self.ban_manager:
+            print("⚠️  Banning not available: not connected to a room")
+            return False
+        
+        return await self.ban_manager.unban_user(user_address)
+    
+    def get_ban_stats(self) -> dict:
+        """Get banning statistics"""
+        if not self.ban_manager:
+            return {"error": "Banning not available: not connected to a room"}
+        
+        return self.ban_manager.get_stats()
+    
+    async def check_mod_permissions(self) -> bool:
+        """Check if the current user has moderator permissions"""
+        if not self.ban_manager:
+            return False
+        
+        return await self.ban_manager.check_mod_permissions()
 
 def on_message(func):
     return func

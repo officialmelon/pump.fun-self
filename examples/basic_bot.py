@@ -10,6 +10,10 @@ async def main():
     @client.event
     async def on_ready():
         print("Bot is connected and ready!")
+        
+        # Optional: Enable banning functionality
+        # client.enable_banning()
+        # print("Banning functionality enabled")
     
     @client.event
     async def on_message(message):
@@ -24,6 +28,13 @@ async def main():
         
         elif message.content.lower() == "hello":
             await client.send_message(f"Hello {message.author.username}!")
+        
+        # Example: Ban user if they send inappropriate content
+        # (Uncomment to enable - requires moderator permissions)
+        # elif "spam" in message.content.lower():
+        #     success = await client.ban_user_by_message_id(message.id, "Spam detected")
+        #     if success:
+        #         print(f"Banned user {message.author.username} for spam")
     
     @client.event
     async def on_join(room, user):
