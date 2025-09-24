@@ -1,6 +1,6 @@
 [project]
 name = "pump.fun-self"
-version = "1.0.0"
+version = "1.0.1"
 authors = [
   { name="melon", email="stevebsons@gmail.com" },
 ]
@@ -21,7 +21,7 @@ classifiers = [
     "Topic :: Communications :: Chat",
 ]
 keywords = ["pump.fun", "selfbot", "discord.py", "websocket", "chat", "bot"]
-license = "MIT"
+license = {text = "MIT"}
 dependencies = [
     "websockets>=11.0.0",
     "aiohttp>=3.8.0",
